@@ -26,8 +26,3 @@ Desktop.ini
 *.tmp
 tmp/
 .cache/
-
-# 环境与密钥
-.env
-.env.*
-!.env.example
