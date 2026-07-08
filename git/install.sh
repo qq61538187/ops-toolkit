@@ -95,7 +95,7 @@ print_vault_fix_hint() {
   # 2) 关掉失效的 mirrorlist,baseurl 指向 vault 存档
   sudo sed -i \\
     -e 's|^mirrorlist=|#mirrorlist=|g' \\
-    -e 's|^#\\?baseurl=https\\?://[^/]*/\\(centos/\\)\\?\\\$releasever|baseurl=${base}|g' \\
+    -e 's|^#\\?baseurl=https\\?://[^/]*/\\([^/]*/\\)\\?\\\$releasever|baseurl=${base}|g' \\
     /etc/yum.repos.d/CentOS-*.repo
 
   # 3) 重建缓存后重跑本脚本
@@ -112,9 +112,10 @@ fix_centos8_repo_to_vault() {
   log "FIX_EOL_REPO=1:备份 /etc/yum.repos.d → ${bak}"
   $SUDO cp -a /etc/yum.repos.d "$bak"
   log "把 CentOS 仓库 baseurl 切换到 ${base} ..."
+  # $releasever 前可能带一个路径段:jdcloud 用 /centos/$releasever,官方用 /$contentdir/$releasever
   $SUDO sed -i \
     -e 's|^mirrorlist=|#mirrorlist=|g' \
-    -e "s|^#\\?baseurl=https\\?://[^/]*/\\(centos/\\)\\?\$releasever|baseurl=${base}|g" \
+    -e "s|^#\\?baseurl=https\\?://[^/]*/\\([^/]*/\\)\\?\$releasever|baseurl=${base}|g" \
     /etc/yum.repos.d/CentOS-*.repo
   $SUDO dnf clean all
   $SUDO dnf makecache
