@@ -1,0 +1,34 @@
+services:
+  python:
+    image: python:3.12
+    # 容器名可通过 .env 覆盖，未设置时回退默认，便于多实例部署
+    container_name: ${PYTHON_CONTAINER_NAME:-mac-devbox-python312}
+    # .env 与本文件同目录，Compose 会自动加载；显式声明便于阅读
+    env_file:
+      - .env
+    working_dir: /workspace
+    volumes:
+      # 数据目录位于本 compose 同级的 ./volumes/python 下
+      - ./volumes/python/workspace:/workspace
+      - ./volumes/python/data:/data
+      - ./volumes/python/backup:/backup
+    command: ["bash", "-lc", "tail -f /dev/null"]
+    user: "0:0"
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - shared
+    healthcheck:
+      test: ["CMD", "python", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  # 共享网络：多个应用/python 容器加入同名网络即可互访。
+  # name 固定为变量值，不加项目前缀；首个启动的 compose 会创建它，其余复用。
+  shared:
+    name: ${PYTHON_NETWORK_NAME:-devbox-shared-net}
+    driver: bridge
