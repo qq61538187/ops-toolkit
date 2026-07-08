@@ -1,23 +1,38 @@
 services:
   nginx:
     image: nginx:latest
-    container_name: mac-devbox-nginx
+    # 容器名可通过 .env 覆盖，未设置时回退默认，便于多实例部署
+    container_name: ${NGINX_CONTAINER_NAME:-mac-devbox-nginx}
+    # .env 与本文件同目录，Compose 会自动加载；显式声明便于阅读
+    env_file:
+      - .env
     ports:
-      - "${NGINX_HTTP_PORT}:80"
-      - "${NGINX_HTTPS_PORT}:443"
+      # 端口未设置时回退到默认 80/443
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
-      - ../../volumes/nginx/conf.d:/etc/nginx/conf.d
-      - ../../volumes/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ../../volumes/nginx/html:/usr/share/nginx/html
-      - ../../volumes/nginx/ssl:/etc/nginx/ssl
-      - ../../volumes/nginx/logs:/var/log/nginx
+      # 数据目录位于本 compose 同级的 ./volumes/nginx 下
+      - ./volumes/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./volumes/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./volumes/nginx/html:/usr/share/nginx/html:ro
+      - ./volumes/nginx/ssl:/etc/nginx/ssl:ro
+      - ./volumes/nginx/logs:/var/log/nginx
     user: "0:0"
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
+    networks:
+      - shared
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+networks:
+  # 共享网络：多个应用/nginx 容器加入同名网络即可互访。
+  # name 固定为变量值，不加项目前缀；首个启动的 compose 会创建它，其余复用。
+  shared:
+    name: ${NGINX_NETWORK_NAME:-devbox-shared-net}
+    driver: bridge
