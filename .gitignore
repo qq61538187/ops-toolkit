@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# 编辑器 / IDE（本地配置）
+.idea/
+*.swp
+*.swo
+.vscode/
+!.vscode/extensions.json
+
+# 本地工具配置
+.claude/settings.local.json
+
+# 临时文件与日志
+*.log
+*.tmp
+tmp/
+.cache/
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
