@@ -13,6 +13,14 @@
 | **CentOS** | 经典 RHEL 系发行版，兼容既有 CentOS 运维习惯 |
 | **macOS** | 适用于本地开发与 macOS 环境下的运维脚本执行 |
 
+## 脚本权限
+
+clone 到本地后，在项目根目录为所有 `.sh` 脚本添加可执行权限：
+
+```bash
+find . -type f -name "*.sh" -exec chmod +x {} +
+```
+
 ## 远程执行（无需 clone）
 
 在云服务器上可直接拉取并执行仓库中的脚本，不必先 `git clone` 整个项目。
