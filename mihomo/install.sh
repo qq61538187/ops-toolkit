@@ -8,6 +8,9 @@
 #
 set -euo pipefail
 
+# 脚本所在目录(用于优先查找本地已下载的二进制包)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # ============================================================================
 # 【必填】把下面这行替换成你的翻墙订阅地址(Clash / mihomo 订阅链接)
 # ============================================================================
@@ -96,28 +99,50 @@ case "$(uname -m)" in
   *) die "不支持的架构:$(uname -m)" ;;
 esac
 
-# ---- 确定最新版本 ----------------------------------------------------------
-if [ -z "$VERSION" ]; then
-  log "查询 mihomo 最新版本..."
-  # 先把响应完整读进变量再解析,避免 grep -m1 提前关闭管道导致 curl 报错 23
-  API_RESP="$(gh_fetch "https://api.github.com/repos/${REPO}/releases/latest")" \
-    || die "无法访问 GitHub API(直连和镜像都失败)。可手动指定版本重试:VERSION=v1.19.0 ./install.sh"
-  VERSION="$(printf '%s' "$API_RESP" | grep '"tag_name"' | head -n1 \
-    | sed -E 's/.*"tag_name"[^"]*"([^"]+)".*/\1/')"
-  [ -n "$VERSION" ] || die "无法解析最新版本号(GitHub API 返回异常)"
-fi
-log "目标版本:${VERSION}"
-
-ASSET="mihomo-${OS}-${ARCH}-${VERSION}.gz"
-URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
-
-# ---- 下载并安装二进制 ------------------------------------------------------
+# ---- 优先使用脚本同级目录下已下载的离线包 --------------------------------
+# 命名匹配当前平台/架构:mihomo-<os>-<arch>-*.gz(如 mihomo-linux-amd64-compatible-v1.19.28.gz)
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-log "下载 ${ASSET} ..."
-gh_download "$URL" "${TMP}/mihomo.gz" \
-  || die "下载失败(直连和所有镜像都失败)。可自定义镜像重试:GH_MIRROR=https://你的镜像/ ./install.sh"
+LOCAL_GZ=""
+# 若显式指定了 VERSION,精确匹配该版本的离线包;否则取匹配到的最新一个
+if [ -n "$VERSION" ]; then
+  cand="${SCRIPT_DIR}/mihomo-${OS}-${ARCH}-${VERSION}.gz"
+  [ -f "$cand" ] && LOCAL_GZ="$cand"
+else
+  # 按文件名倒序取一个(通常即较新版本)
+  for f in "${SCRIPT_DIR}/mihomo-${OS}-${ARCH}-"*.gz; do
+    [ -f "$f" ] && LOCAL_GZ="$f"
+  done
+fi
+
+if [ -n "$LOCAL_GZ" ]; then
+  log "发现本地离线包,直接使用:${LOCAL_GZ}"
+  # 从文件名回填版本号(mihomo-<os>-<arch>-<version>.gz)
+  VERSION="$(basename "$LOCAL_GZ" .gz | sed -E "s/^mihomo-${OS}-${ARCH}-//")"
+  log "目标版本:${VERSION}"
+  cp "$LOCAL_GZ" "${TMP}/mihomo.gz"
+else
+  # ---- 无本地包 → 联网下载 -------------------------------------------------
+  # ---- 确定最新版本 ------------------------------------------------------
+  if [ -z "$VERSION" ]; then
+    log "未发现本地离线包,查询 mihomo 最新版本..."
+    # 先把响应完整读进变量再解析,避免 grep -m1 提前关闭管道导致 curl 报错 23
+    API_RESP="$(gh_fetch "https://api.github.com/repos/${REPO}/releases/latest")" \
+      || die "无法访问 GitHub API(直连和镜像都失败)。可手动指定版本重试:VERSION=v1.19.0 ./install.sh"
+    VERSION="$(printf '%s' "$API_RESP" | grep '"tag_name"' | head -n1 \
+      | sed -E 's/.*"tag_name"[^"]*"([^"]+)".*/\1/')"
+    [ -n "$VERSION" ] || die "无法解析最新版本号(GitHub API 返回异常)"
+  fi
+  log "目标版本:${VERSION}"
+
+  ASSET="mihomo-${OS}-${ARCH}-${VERSION}.gz"
+  URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
+
+  log "下载 ${ASSET} ..."
+  gh_download "$URL" "${TMP}/mihomo.gz" \
+    || die "下载失败(直连和所有镜像都失败)。可自定义镜像重试:GH_MIRROR=https://你的镜像/ ./install.sh"
+fi
 
 log "安装二进制到 ${BIN_PATH}"
 gunzip -c "${TMP}/mihomo.gz" > "${TMP}/mihomo"
