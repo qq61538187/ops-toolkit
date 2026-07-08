@@ -24,10 +24,29 @@ set -euo pipefail
 
 DOCKER_VERSION="28.4.0"                   # 精确版本,与所在目录名一致
 START="${START:-1}"
+# 国内镜像加速地址(空格分隔),写入 /etc/docker/daemon.json 的 registry-mirrors。
+# 可用环境变量覆盖;显式设为空字符串(REGISTRY_MIRRORS="")则跳过该配置。
+REGISTRY_MIRRORS="${REGISTRY_MIRRORS-https://docker.m.daocloud.io https://docker.1ms.run https://hub-mirror.c.163.com https://mirror.baidubce.com}"
 
 log()  { printf '\033[0;32m[install]\033[0m %s\n' "$*"; }
 warn() { printf '\033[0;33m[install]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[0;31m[install]\033[0m %s\n' "$*" >&2; exit 1; }
+
+# 带重试地执行命令(应对 download.docker.com 偶发的 SSL/连接抖动)。
+# 用法：retry <次数> <间隔秒> -- <命令...>
+retry() {
+  local tries="$1" delay="$2"; shift 2
+  [ "$1" = "--" ] && shift
+  local n=1
+  until "$@"; do
+    if [ "$n" -ge "$tries" ]; then
+      return 1
+    fi
+    warn "命令失败(第 ${n}/${tries} 次),${delay}s 后重试：$*"
+    sleep "$delay"
+    n=$((n+1))
+  done
+}
 
 # ---- 探测操作系统 ----------------------------------------------------------
 detect_os() {
@@ -149,18 +168,30 @@ install_el() {
     $SUDO curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo \
       -o /etc/yum.repos.d/docker-ce.repo
 
-  # 解析出以 28.4.0 开头的完整包版本串(形如 3:28.4.0-1.el9)
-  local ver
-  ver="$($SUDO "$pm" --showduplicates list docker-ce 2>/dev/null \
-          | awk '/docker-ce/{print $2}' | grep -E "(:|-)?${DOCKER_VERSION}-" | tail -n1 || true)"
+  # 解析出以 28.4.0 开头的完整包版本串,并剥掉 epoch(形如 3:28.4.0-1.el9 → 28.4.0-1.el9)。
+  # docker-ce 与 docker-ce-cli 的 epoch 不同(分别是 3: 与 1:),故不能把带 epoch 的串
+  # 直接套用到两个包上,否则会出现「No match for docker-ce-cli-3:...」。去掉 epoch 后
+  # 交给 dnf/yum 各自匹配正确的 epoch。
+  # metadata 可能因网络抖动下载失败,循环重试直到解析出版本或用尽次数。
+  local ver="" i=1
+  while [ "$i" -le 5 ]; do
+    ver="$($SUDO "$pm" --showduplicates list docker-ce 2>/dev/null \
+            | awk '/docker-ce/{print $2}' | grep -E "(:|-)?${DOCKER_VERSION}-" | tail -n1 || true)"
+    ver="${ver#*:}"
+    [ -n "$ver" ] && break
+    warn "解析 ${DOCKER_VERSION} 版本失败(第 ${i}/5 次,可能是仓库 metadata 未下全),5s 后重试 ..."
+    sleep 5
+    i=$((i+1))
+  done
   if [ -n "$ver" ]; then
     log "${pm} 安装 docker-ce-${ver} + compose 插件 ..."
-    $SUDO "$pm" install -y \
+    retry 5 5 -- $SUDO "$pm" install -y \
       "docker-ce-${ver}" \
       "docker-ce-cli-${ver}" \
       containerd.io \
       docker-buildx-plugin \
-      docker-compose-plugin
+      docker-compose-plugin \
+      || die "docker-ce 安装多次失败,请检查到 download.docker.com 的网络连通性后重试。"
   else
     die "${pm} 仓库中未找到 ${DOCKER_VERSION}。可用版本：
 $($SUDO "$pm" --showduplicates list docker-ce 2>/dev/null | awk '/docker-ce/{print "  "$2}' | tail -n8)"
@@ -208,6 +239,57 @@ add_docker_group() {
   fi
 }
 
+# ---- 配置国内镜像加速（写 /etc/docker/daemon.json 的 registry-mirrors）-----
+# 默认从 Docker Hub 拉镜像常因网络不通而失败,这里写入国内镜像源避免拉取失败。
+configure_registry_mirrors() {
+  # brew(Docker Desktop)用图形界面配置,daemon.json 路径不同,跳过。
+  [ "$PM" = "brew" ] && return 0
+  # 显式清空则不配置。
+  [ -n "${REGISTRY_MIRRORS// /}" ] || { log "REGISTRY_MIRRORS 为空,跳过镜像加速配置"; return 0; }
+
+  # 把空格分隔的地址转成 JSON 数组元素:"a",\n    "b"
+  local json_items="" m
+  for m in $REGISTRY_MIRRORS; do
+    [ -n "$m" ] || continue
+    if [ -z "$json_items" ]; then
+      json_items="    \"$m\""
+    else
+      json_items="${json_items},
+    \"$m\""
+    fi
+  done
+
+  local dir="/etc/docker" file="/etc/docker/daemon.json"
+  $SUDO install -m 0755 -d "$dir"
+
+  if [ -f "$file" ] && ! grep -q '"registry-mirrors"' "$file" 2>/dev/null; then
+    # 已有 daemon.json 但无 registry-mirrors 字段:不覆盖用户配置,仅提示。
+    warn "已存在 ${file} 且不含 registry-mirrors,为避免覆盖你的配置,跳过自动写入。"
+    warn "请手动在其中加入:\"registry-mirrors\": [ ${REGISTRY_MIRRORS// /, } ]"
+    return 0
+  fi
+  if [ -f "$file" ]; then
+    $SUDO cp -a "$file" "${file}.bak.$$" 2>/dev/null || true
+    log "已备份原 daemon.json 到 ${file}.bak.$$"
+  fi
+
+  log "写入镜像加速到 ${file}:${REGISTRY_MIRRORS}"
+  printf '{\n  "registry-mirrors": [\n%s\n  ]\n}\n' "$json_items" | $SUDO tee "$file" >/dev/null
+
+  # START=0 时只写配置、不触碰服务(与 start_service 的语义保持一致)。
+  if [ "$START" != "1" ]; then
+    log "START=0,已写入镜像加速配置,未重启 docker;下次启动即生效。"
+    return 0
+  fi
+  # 让配置生效:优先 systemd 重启,否则提示手动重启。
+  if command -v systemctl >/dev/null 2>&1; then
+    $SUDO systemctl restart "$SERVICE" \
+      || warn "重启 ${SERVICE} 失败,请手动执行:sudo systemctl restart ${SERVICE}"
+  else
+    warn "无 systemd,请手动重启 docker 使镜像加速生效。"
+  fi
+}
+
 # ---- 主流程 ----------------------------------------------------------------
 detect_os
 detect_pm
@@ -224,6 +306,7 @@ esac
 
 start_service
 add_docker_group
+configure_registry_mirrors
 
 # ---- 验证 ------------------------------------------------------------------
 if [ "$PM" = "brew" ]; then
