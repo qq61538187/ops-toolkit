@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nginx Docker 服务器 - 高性能 Web 服务器">
+    <meta name="keywords" content="nginx, docker, web server, 容器化">
+    <title>Nginx Docker 服务器</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="favicon.ico" type="image/svg+xml">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-brand">
+                <h1>🚀 Nginx Docker</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home">首页</a></li>
+                <li><a href="#features">特性</a></li>
+                <li><a href="#docs">文档</a></li>
+                <li><a href="#status">状态</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="main">
+        <section id="home" class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h2 class="hero-title">欢迎使用 Nginx Docker 服务器</h2>
+                    <p class="hero-subtitle">高性能、可扩展的容器化 Web 服务器解决方案</p>
+                    <div class="status-badge">
+                        <span class="status-icon">✅</span>
+                        <span class="status-text">服务运行正常</span>
+                    </div>
+                    <div class="hero-actions">
+                        <a href="#features" class="btn btn-primary">了解特性</a>
+                        <a href="/health" class="btn btn-secondary">健康检查</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <div class="container">
+                <h2 class="section-title">核心特性</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>高性能</h3>
+                        <p>优化的 Nginx 配置，支持高并发访问和快速响应</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>安全可靠</h3>
+                        <p>内置安全头配置，支持 HTTPS 和现代安全标准</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📦</div>
+                        <h3>容器化部署</h3>
+                        <p>基于 Docker 的轻量级部署，易于扩展和管理</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎯</div>
+                        <h3>智能缓存</h3>
+                        <p>静态资源缓存优化，提升页面加载速度</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>监控日志</h3>
+                        <p>详细的访问日志和错误监控，便于问题排查</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔧</div>
+                        <h3>易于配置</h3>
+                        <p>模块化配置文件，支持灵活的自定义设置</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="docs" class="docs">
+            <div class="container">
+                <h2 class="section-title">快速开始</h2>
+                <div class="docs-content">
+                    <div class="code-block">
+                        <h3>启动服务</h3>
+                        <pre><code># 启动 Docker Compose 服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs nginx</code></pre>
+                    </div>
+                    <div class="info-cards">
+                        <div class="info-card">
+                            <h4>📁 目录结构</h4>
+                            <ul>
+                                <li><code>conf.d/</code> - 站点配置</li>
+                                <li><code>html/</code> - 网站文件</li>
+                                <li><code>ssl/</code> - SSL 证书</li>
+                                <li><code>nginx.conf</code> - 主配置</li>
+                            </ul>
+                        </div>
+                        <div class="info-card">
+                            <h4>🌐 访问地址</h4>
+                            <ul>
+                                <li><a href="/">HTTP: localhost:80</a></li>
+                                <li><a href="https://localhost">HTTPS: localhost:443</a></li>
+                                <li><a href="/health">健康检查: /health</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="status" class="status">
+            <div class="container">
+                <h2 class="section-title">服务状态</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">服务状态</div>
+                        <div class="status-value online">在线</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">服务器时间</div>
+                        <div class="status-value" id="server-time">--</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Nginx 版本</div>
+                        <div class="status-value">Latest</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Docker 状态</div>
+                        <div class="status-value online">运行中</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Nginx Docker Server. 基于 Docker Compose 构建的高性能 Web 服务器。</p>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

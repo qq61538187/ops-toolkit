@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统健康检查 | Nginx Docker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .health-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem 0;
+        }
+        
+        .health-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .health-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        
+        .health-title {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .health-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .status-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-value {
+            font-size: 2rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .status-healthy {
+            border-left: 4px solid #4ade80;
+        }
+        
+        .status-warning {
+            border-left: 4px solid #fbbf24;
+        }
+        
+        .status-error {
+            border-left: 4px solid #f87171;
+        }
+        
+        .detailed-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            color: white;
+        }
+        
+        .metric-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric-icon {
+            font-size: 2rem;
+        }
+        
+        .metric-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        
+        .metric-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            opacity: 0.8;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .refresh-section {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .refresh-btn {
+            background: #ffd700;
+            color: #333;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 0 0.5rem;
+        }
+        
+        .refresh-btn:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+        
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .auto-refresh {
+            color: white;
+            margin-top: 1rem;
+            opacity: 0.8;
+        }
+        
+        .logs-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            color: white;
+        }
+        
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .logs-content {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 0.5rem;
+            padding: 0.2rem 0;
+        }
+        
+        .log-timestamp {
+            color: #94a3b8;
+        }
+        
+        .log-level-info {
+            color: #60a5fa;
+        }
+        
+        .log-level-warn {
+            color: #fbbf24;
+        }
+        
+        .log-level-error {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body>
+    <div class="health-page">
+        <div class="health-container">
+            <div class="health-header">
+                <h1 class="health-title">系统健康检查</h1>
+                <p class="health-subtitle">实时监控服务器状态和性能指标</p>
+            </div>
+            
+            <div class="status-overview">
+                <div class="status-card status-healthy" id="overallStatus">
+                    <div class="status-icon">💚</div>
+                    <div class="status-title">总体状态</div>
+                    <div class="status-value" id="overallValue">健康</div>
+                    <div class="status-description">所有服务正常运行</div>
+                </div>
+                
+                <div class="status-card status-healthy" id="nginxStatus">
+                    <div class="status-icon">🌐</div>
+                    <div class="status-title">Nginx 状态</div>
+                    <div class="status-value" id="nginxValue">运行中</div>
+                    <div class="status-description" id="nginxUptime">运行时间: 计算中...</div>
+                </div>
+                
+                <div class="status-card status-healthy" id="responseStatus">
+                    <div class="status-icon">⚡</div>
+                    <div class="status-title">响应时间</div>
+                    <div class="status-value" id="responseValue">-</div>
+                    <div class="status-description">平均响应时间</div>
+                </div>
+                
+                <div class="status-card status-healthy" id="connectionsStatus">
+                    <div class="status-icon">🔗</div>
+                    <div class="status-title">活跃连接</div>
+                    <div class="status-value" id="connectionsValue">-</div>
+                    <div class="status-description">当前连接数</div>
+                </div>
+            </div>
+            
+            <div class="detailed-metrics">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon">📊</div>
+                        <div class="metric-title">系统指标</div>
+                    </div>
+                    <ul class="metric-list">
+                        <li class="metric-item">
+                            <span class="metric-label">CPU 使用率</span>
+                            <span class="metric-value" id="cpuUsage">-</span>
+                        </li>
+                        <li class="metric-item">
+                            <span class="metric-label">内存使用率</span>
+                            <span class="metric-value" id="memoryUsage">-</span>
+                        </li>
+                        <li class="metric-item">
+                            <span class="metric-label">磁盘使用率</span>
+                            <span class="metric-value" id="diskUsage">-</span>
+                        </li>
+                        <li class="metric-item">
+                            <span class="metric-label">负载平均值</span>
+                            <span class="metric-value" id="loadAverage">-</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon">🌐</div>
+                        <div class="metric-title">网络指标</div>
+                    </div>
+                    <ul class="metric-list">
+                        <li class="metric-item">
+                            <span class="metric-label">总请求数</span>
+                            <span class="metric-value" id="totalRequests">-</span>
+                        </li>
+                        <li class="metric-item">
+                            <span class="metric-label">每秒请求数</span>
+                            <span class="metric-value" id="requestsPerSecond">-</span>
+                        </li>
+                        <li class="metric-item">
+                            <span class="metric-label">错误率</span>
+                            <span class="metric-value" id="errorRate">-</span>
+                        </li>
+                        <li class="metric-item">
+                            <span class="metric-label">带宽使用</span>
+                            <span class="metric-value" id="bandwidth">-</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="refresh-section">
+                <button class="refresh-btn" onclick="refreshHealth()" id="refreshBtn">
+                    🔄 刷新状态
+                </button>
+                <button class="refresh-btn" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                    ⏰ 自动刷新: 关闭
+                </button>
+                <div class="auto-refresh">
+                    <span id="lastUpdate">最后更新: -</span> | 
+                    <span id="nextUpdate">下次更新: -</span>
+                </div>
+            </div>
+            
+            <div class="logs-section">
+                <div class="logs-header">
+                    <h3>📋 系统日志</h3>
+                    <button class="refresh-btn" onclick="refreshLogs()">刷新日志</button>
+                </div>
+                <div class="logs-content" id="logsContent">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[2024-01-20 10:30:15]</span>
+                        <span class="log-level-info">[INFO]</span>
+                        系统健康检查页面已加载
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let autoRefreshInterval = null;
+        let autoRefreshEnabled = false;
+        
+        // 模拟数据生成
+        function generateMockData() {
+            return {
+                overall: Math.random() > 0.1 ? 'healthy' : 'warning',
+                nginx: {
+                    status: 'running',
+                    uptime: Math.floor(Math.random() * 86400) + 3600 // 1-24小时
+                },
+                response: Math.floor(Math.random() * 100) + 50, // 50-150ms
+                connections: Math.floor(Math.random() * 1000) + 100,
+                cpu: Math.floor(Math.random() * 80) + 10,
+                memory: Math.floor(Math.random() * 70) + 20,
+                disk: Math.floor(Math.random() * 60) + 30,
+                load: (Math.random() * 2).toFixed(2),
+                requests: Math.floor(Math.random() * 10000) + 5000,
+                rps: Math.floor(Math.random() * 100) + 20,
+                errorRate: (Math.random() * 5).toFixed(2),
+                bandwidth: (Math.random() * 100).toFixed(1)
+            };
+        }
+        
+        // 格式化时间
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}小时${minutes}分钟`;
+        }
+        
+        // 更新健康状态
+        function updateHealthStatus() {
+            const data = generateMockData();
+            const now = new Date();
+            
+            // 更新总体状态
+            const overallCard = document.getElementById('overallStatus');
+            const overallValue = document.getElementById('overallValue');
+            
+            if (data.overall === 'healthy') {
+                overallCard.className = 'status-card status-healthy';
+                overallValue.textContent = '健康';
+                overallCard.querySelector('.status-icon').textContent = '💚';
+                overallCard.querySelector('.status-description').textContent = '所有服务正常运行';
+            } else {
+                overallCard.className = 'status-card status-warning';
+                overallValue.textContent = '警告';
+                overallCard.querySelector('.status-icon').textContent = '⚠️';
+                overallCard.querySelector('.status-description').textContent = '部分指标需要关注';
+            }
+            
+            // 更新 Nginx 状态
+            document.getElementById('nginxValue').textContent = '运行中';
+            document.getElementById('nginxUptime').textContent = `运行时间: ${formatUptime(data.nginx.uptime)}`;
+            
+            // 更新响应时间
+            document.getElementById('responseValue').textContent = `${data.response}ms`;
+            
+            // 更新连接数
+            document.getElementById('connectionsValue').textContent = data.connections;
+            
+            // 更新系统指标
+            document.getElementById('cpuUsage').textContent = `${data.cpu}%`;
+            document.getElementById('memoryUsage').textContent = `${data.memory}%`;
+            document.getElementById('diskUsage').textContent = `${data.disk}%`;
+            document.getElementById('loadAverage').textContent = data.load;
+            
+            // 更新网络指标
+            document.getElementById('totalRequests').textContent = data.requests.toLocaleString();
+            document.getElementById('requestsPerSecond').textContent = `${data.rps}/s`;
+            document.getElementById('errorRate').textContent = `${data.errorRate}%`;
+            document.getElementById('bandwidth').textContent = `${data.bandwidth} MB/s`;
+            
+            // 更新时间
+            document.getElementById('lastUpdate').textContent = `最后更新: ${now.toLocaleTimeString()}`;
+            
+            if (autoRefreshEnabled) {
+                const nextUpdate = new Date(now.getTime() + 30000);
+                document.getElementById('nextUpdate').textContent = `下次更新: ${nextUpdate.toLocaleTimeString()}`;
+            } else {
+                document.getElementById('nextUpdate').textContent = '下次更新: 手动';
+            }
+            
+            // 添加日志条目
+            addLogEntry('INFO', '健康状态已更新');
+        }
+        
+        // 刷新健康状态
+        function refreshHealth() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '🔄 刷新中...';
+            
+            setTimeout(() => {
+                updateHealthStatus();
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 刷新状态';
+            }, 1000);
+        }
+        
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            
+            if (autoRefreshEnabled) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshEnabled = false;
+                btn.textContent = '⏰ 自动刷新: 关闭';
+                document.getElementById('nextUpdate').textContent = '下次更新: 手动';
+                addLogEntry('INFO', '自动刷新已关闭');
+            } else {
+                autoRefreshInterval = setInterval(updateHealthStatus, 30000);
+                autoRefreshEnabled = true;
+                btn.textContent = '⏰ 自动刷新: 开启';
+                addLogEntry('INFO', '自动刷新已开启 (30秒间隔)');
+            }
+        }
+        
+        // 添加日志条目
+        function addLogEntry(level, message) {
+            const logsContent = document.getElementById('logsContent');
+            const timestamp = new Date().toLocaleString('zh-CN');
+            const levelClass = `log-level-${level.toLowerCase()}`;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="${levelClass}">[${level}]</span>
+                ${message}
+            `;
+            
+            logsContent.insertBefore(logEntry, logsContent.firstChild);
+            
+            // 限制日志条目数量
+            const entries = logsContent.querySelectorAll('.log-entry');
+            if (entries.length > 50) {
+                entries[entries.length - 1].remove();
+            }
+        }
+        
+        // 刷新日志
+        function refreshLogs() {
+            addLogEntry('INFO', '日志已刷新');
+            
+            // 模拟一些随机日志
+            const messages = [
+                'HTTP 请求处理完成',
+                '缓存清理任务执行',
+                '配置文件重新加载',
+                '连接池状态检查',
+                'SSL 证书验证通过'
+            ];
+            
+            const levels = ['INFO', 'WARN', 'ERROR'];
+            
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const message = messages[Math.floor(Math.random() * messages.length)];
+                    const level = levels[Math.floor(Math.random() * levels.length)];
+                    addLogEntry(level, message);
+                }, i * 500);
+            }
+        }
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            updateHealthStatus();
+            addLogEntry('INFO', '健康检查页面初始化完成');
+            
+            // 每分钟添加一个随机日志条目
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const messages = [
+                        '定期健康检查执行',
+                        '系统性能监控正常',
+                        '网络连接状态良好',
+                        '服务响应时间正常'
+                    ];
+                    const message = messages[Math.floor(Math.random() * messages.length)];
+                    addLogEntry('INFO', message);
+                }
+            }, 60000);
+        });
+        
+        // 页面可见性变化时的处理
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (autoRefreshEnabled) {
+                    clearInterval(autoRefreshInterval);
+                    addLogEntry('INFO', '页面不可见，暂停自动刷新');
+                }
+            } else {
+                if (autoRefreshEnabled) {
+                    autoRefreshInterval = setInterval(updateHealthStatus, 30000);
+                    updateHealthStatus();
+                    addLogEntry('INFO', '页面可见，恢复自动刷新');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器错误 | Nginx Docker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .error-container {
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .error-code {
+            font-size: 6rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .error-message {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .status-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        
+        .status-info h4 {
+            color: #ffd700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-label {
+            opacity: 0.8;
+        }
+        
+        .status-value {
+            font-weight: 600;
+        }
+        
+        .retry-section {
+            margin-top: 2rem;
+        }
+        
+        .retry-btn {
+            background: #ffd700;
+            color: #333;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 0 0.5rem;
+        }
+        
+        .retry-btn:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+        
+        .retry-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .countdown {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 1rem;
+        }
+        
+        .technical-details {
+            margin-top: 2rem;
+            text-align: left;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        .technical-details summary {
+            cursor: pointer;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        
+        .technical-details pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <div class="error-code" id="errorCode">5XX</div>
+            <h1 class="error-title" id="errorTitle">服务器内部错误</h1>
+            <p class="error-message" id="errorMessage">
+                服务器遇到了一个意外的情况，无法完成您的请求。<br>
+                我们的技术团队已经收到通知，正在努力解决这个问题。
+            </p>
+            
+            <div class="status-info">
+                <h4>📊 状态信息</h4>
+                <div class="status-item">
+                    <span class="status-label">错误时间:</span>
+                    <span class="status-value" id="errorTime">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">请求ID:</span>
+                    <span class="status-value" id="requestId">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">服务器状态:</span>
+                    <span class="status-value" id="serverStatus">检查中...</span>
+                </div>
+            </div>
+            
+            <div class="error-actions">
+                <a href="/" class="btn btn-primary">返回首页</a>
+                <button class="retry-btn" onclick="retryRequest()" id="retryBtn">重试请求</button>
+            </div>
+            
+            <div class="retry-section">
+                <div class="countdown" id="countdown"></div>
+            </div>
+            
+            <details class="technical-details">
+                <summary>🔧 技术详情 (开发者)</summary>
+                <pre id="technicalInfo">
+错误代码: <span id="httpStatus">500</span>
+用户代理: <span id="userAgent">-</span>
+请求路径: <span id="requestPath">-</span>
+时间戳: <span id="timestamp">-</span>
+                </pre>
+            </details>
+        </div>
+    </div>
+    
+    <script>
+        // 获取错误信息
+        function getErrorInfo() {
+            const path = window.location.pathname;
+            const userAgent = navigator.userAgent;
+            const timestamp = new Date().toISOString();
+            const requestId = 'req_' + Math.random().toString(36).substr(2, 9);
+            
+            return {
+                path,
+                userAgent,
+                timestamp,
+                requestId
+            };
+        }
+        
+        // 更新页面信息
+        function updatePageInfo() {
+            const info = getErrorInfo();
+            const now = new Date();
+            
+            document.getElementById('errorTime').textContent = now.toLocaleString('zh-CN');
+            document.getElementById('requestId').textContent = info.requestId;
+            document.getElementById('userAgent').textContent = info.userAgent;
+            document.getElementById('requestPath').textContent = info.path;
+            document.getElementById('timestamp').textContent = info.timestamp;
+            
+            // 根据 URL 参数设置具体错误信息
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status') || '500';
+            const httpStatus = document.getElementById('httpStatus');
+            const errorCode = document.getElementById('errorCode');
+            const errorTitle = document.getElementById('errorTitle');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            httpStatus.textContent = status;
+            
+            switch(status) {
+                case '500':
+                    errorCode.textContent = '500';
+                    errorTitle.textContent = '内部服务器错误';
+                    errorMessage.innerHTML = '服务器遇到了一个意外的情况，无法完成您的请求。<br>我们的技术团队已经收到通知，正在努力解决这个问题。';
+                    break;
+                case '502':
+                    errorCode.textContent = '502';
+                    errorTitle.textContent = '网关错误';
+                    errorMessage.innerHTML = '服务器作为网关或代理时，从上游服务器收到无效响应。<br>请稍后重试，或联系系统管理员。';
+                    break;
+                case '503':
+                    errorCode.textContent = '503';
+                    errorTitle.textContent = '服务不可用';
+                    errorMessage.innerHTML = '服务器暂时无法处理请求，可能正在维护中。<br>请稍后重试。';
+                    break;
+                case '504':
+                    errorCode.textContent = '504';
+                    errorTitle.textContent = '网关超时';
+                    errorMessage.innerHTML = '服务器作为网关或代理时，未能及时从上游服务器收到响应。<br>请稍后重试。';
+                    break;
+                default:
+                    errorCode.textContent = status;
+                    errorTitle.textContent = '服务器错误';
+                    errorMessage.innerHTML = '服务器遇到了一个错误，无法完成您的请求。<br>请稍后重试。';
+            }
+        }
+        
+        // 检查服务器状态
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/health', { 
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    document.getElementById('serverStatus').textContent = '正常';
+                    document.getElementById('serverStatus').style.color = '#4ade80';
+                } else {
+                    document.getElementById('serverStatus').textContent = '异常';
+                    document.getElementById('serverStatus').style.color = '#f87171';
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = '无法连接';
+                document.getElementById('serverStatus').style.color = '#f87171';
+            }
+        }
+        
+        // 重试请求
+        function retryRequest() {
+            const retryBtn = document.getElementById('retryBtn');
+            retryBtn.disabled = true;
+            retryBtn.textContent = '重试中...';
+            
+            // 简单的重试逻辑 - 刷新页面
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+        
+        // 自动重试倒计时
+        function startAutoRetry() {
+            let countdown = 30;
+            const countdownElement = document.getElementById('countdown');
+            
+            const timer = setInterval(() => {
+                countdownElement.textContent = `${countdown} 秒后自动重试`;
+                countdown--;
+                
+                if (countdown < 0) {
+                    clearInterval(timer);
+                    retryRequest();
+                }
+            }, 1000);
+        }
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePageInfo();
+            checkServerStatus();
+            
+            // 对于 503 错误，启动自动重试
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status');
+            if (status === '503') {
+                startAutoRetry();
+            }
+        });
+        
+        // 记录错误（可选）
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'exception', {
+                description: 'Server Error',
+                fatal: false
+            });
+        }
+    </script>
+</body>
+</html>

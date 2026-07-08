@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - 禁止访问 | Nginx Docker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .error-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .error-container {
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .error-code {
+            font-size: 8rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .error-message {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: shake 2s ease-in-out infinite;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .access-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        
+        .access-info h4 {
+            color: #ffd700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .access-reasons {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .access-reasons li {
+            margin-bottom: 0.8rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .access-reasons li:before {
+            content: "•";
+            color: #ffd700;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        .contact-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .contact-section h4 {
+            color: #ffd700;
+            margin-bottom: 1rem;
+        }
+        
+        .contact-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .contact-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .contact-item:hover {
+            transform: translateY(-2px);
+        }
+        
+        .contact-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-section {
+            margin-top: 2rem;
+        }
+        
+        .login-btn {
+            background: #ffd700;
+            color: #333;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .login-btn:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+        
+        .security-notice {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .ip-info {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-container">
+            <div class="error-icon">🚫</div>
+            <div class="error-code">403</div>
+            <h1 class="error-title">禁止访问</h1>
+            <p class="error-message">
+                抱歉，您没有权限访问此资源。<br>
+                请检查您的访问权限或联系系统管理员。
+            </p>
+            
+            <div class="access-info">
+                <h4>🔒 可能的原因</h4>
+                <ul class="access-reasons">
+                    <li>您没有访问此页面的权限</li>
+                    <li>需要登录才能访问此资源</li>
+                    <li>您的 IP 地址被限制访问</li>
+                    <li>文件或目录权限设置不正确</li>
+                    <li>访问频率过高，触发了安全限制</li>
+                </ul>
+            </div>
+            
+            <div class="error-actions">
+                <a href="/" class="btn btn-primary">返回首页</a>
+                <a href="javascript:history.back()" class="btn btn-secondary">返回上页</a>
+            </div>
+            
+            <div class="login-section">
+                <p>如果您有账户，请尝试登录：</p>
+                <a href="/login" class="login-btn">登录账户</a>
+            </div>
+            
+            <div class="contact-section">
+                <h4>📞 需要帮助？</h4>
+                <p>如果您认为这是一个错误，请联系我们：</p>
+                <div class="contact-methods">
+                    <div class="contact-item">
+                        <div class="contact-icon">📧</div>
+                        <div>发送邮件</div>
+                        <small>admin@example.com</small>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">💬</div>
+                        <div>在线客服</div>
+                        <small>工作时间 9:00-18:00</small>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">📱</div>
+                        <div>技术支持</div>
+                        <small>400-xxx-xxxx</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="security-notice">
+                <h4>🛡️ 安全提示</h4>
+                <p>此访问尝试已被记录。如果您是恶意访问者，请注意您的行为可能违反相关法律法规。</p>
+                <div class="ip-info">
+                    访问时间: <span id="accessTime">-</span><br>
+                    请求路径: <span id="requestPath">-</span><br>
+                    用户代理: <span id="userAgent">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 更新页面信息
+        function updatePageInfo() {
+            const now = new Date();
+            const path = window.location.pathname;
+            const userAgent = navigator.userAgent;
+            
+            document.getElementById('accessTime').textContent = now.toLocaleString('zh-CN');
+            document.getElementById('requestPath').textContent = path;
+            document.getElementById('userAgent').textContent = userAgent.substring(0, 50) + (userAgent.length > 50 ? '...' : '');
+        }
+        
+        // 检查登录状态
+        function checkLoginStatus() {
+            // 这里可以实现检查用户登录状态的逻辑
+            // 如果用户已登录，可以显示不同的消息
+            const isLoggedIn = false; // 示例
+            
+            if (isLoggedIn) {
+                document.querySelector('.login-section').style.display = 'none';
+                document.querySelector('.error-message').innerHTML = 
+                    '您已登录，但仍然没有权限访问此资源。<br>请联系管理员获取相应权限。';
+            }
+        }
+        
+        // 记录访问尝试
+        function logAccessAttempt() {
+            const logData = {
+                timestamp: new Date().toISOString(),
+                path: window.location.pathname,
+                userAgent: navigator.userAgent,
+                referrer: document.referrer
+            };
+            
+            // 这里可以发送日志到服务器
+            console.log('403 Access Attempt:', logData);
+            
+            // 如果有分析工具，记录事件
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'page_view', {
+                    page_title: '403 Forbidden',
+                    page_location: window.location.href,
+                    custom_map: {
+                        'custom_parameter_1': 'access_denied'
+                    }
+                });
+            }
+        }
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePageInfo();
+            checkLoginStatus();
+            logAccessAttempt();
+        });
+        
+        // 防止右键菜单（可选的安全措施）
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
+        // 防止选择文本（可选的安全措施）
+        document.addEventListener('selectstart', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

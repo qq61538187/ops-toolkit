@@ -1,0 +1,23 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: mac-devbox-nginx
+    ports:
+      - "${NGINX_HTTP_PORT}:80"
+      - "${NGINX_HTTPS_PORT}:443"
+    volumes:
+      - ../../volumes/nginx/conf.d:/etc/nginx/conf.d
+      - ../../volumes/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../../volumes/nginx/html:/usr/share/nginx/html
+      - ../../volumes/nginx/ssl:/etc/nginx/ssl
+      - ../../volumes/nginx/logs:/var/log/nginx
+    user: "0:0"
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
