@@ -1,0 +1,26 @@
+services:
+  verdaccio:
+    image: verdaccio/verdaccio:5
+    # 容器名可通过 .env 覆盖，未设置时回退默认，便于多实例部署
+    container_name: ${VERDACCIO_CONTAINER_NAME:-mac-devbox-verdaccio}
+    # .env 与本文件同目录，Compose 会自动加载；显式声明便于阅读
+    env_file:
+      - .env
+    ports:
+      # 端口未设置时回退到默认 12873
+      - "${VERDACCIO_PORT:-12873}:4873"
+    volumes:
+      # 数据/配置目录位于本 compose 同级的 ./volumes 下
+      - ./volumes/conf/config.yaml:/verdaccio/conf/config.yaml
+      - ./volumes/plugins:/verdaccio/plugins
+      - ./volumes/storage:/verdaccio/storage
+      - ./volumes/backup:/backup
+    networks:
+      - shared
+
+networks:
+  # 共享网络：多个应用/nginx 容器加入同名网络即可互访。
+  # name 固定为变量值，不加项目前缀；首个启动的 compose 会创建它，其余复用。
+  shared:
+    name: ${VERDACCIO_NETWORK_NAME:-devbox-shared-net}
+    driver: bridge

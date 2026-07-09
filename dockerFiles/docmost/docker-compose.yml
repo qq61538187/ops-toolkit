@@ -1,0 +1,57 @@
+services:
+  docmost-app:
+    image: docmost/docmost:latest
+    # 容器名可通过 .env 覆盖，未设置时回退默认，便于多实例部署
+    container_name: ${DOCMOST_APP_CONTAINER_NAME:-docmost-app}
+    depends_on:
+      - docmost-db
+      - docmost-redis
+    # .env 与本文件同目录，Compose 会自动加载；显式声明便于阅读
+    env_file:
+      - .env
+    environment:
+      APP_URL: ${DOCMOST_APP_URL}
+      APP_SECRET: ${DOCMOST_APP_SECRET}
+      DATABASE_URL: ${DOCMOST_DATABASE_URL}
+      REDIS_URL: ${DOCMOST_REDIS_URL}
+    ports:
+      - "${DOCMOST_PORT:-13001}:3000"
+    restart: unless-stopped
+    volumes:
+      # 数据目录位于本 compose 同级的 ./volumes 下
+      - ./volumes/storage:/app/data/storage
+    networks:
+      - shared
+
+  docmost-db:
+    image: postgres:16-alpine
+    container_name: ${DOCMOST_DB_CONTAINER_NAME:-docmost-db}
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DOCMOST_DB_NAME}
+      POSTGRES_USER: ${DOCMOST_DB_USER}
+      POSTGRES_PASSWORD: ${DOCMOST_DB_PASSWORD}
+    restart: unless-stopped
+    volumes:
+      - ./volumes/db:/var/lib/postgresql/data
+    networks:
+      - shared
+
+  docmost-redis:
+    image: redis:7.2-alpine
+    container_name: ${DOCMOST_REDIS_CONTAINER_NAME:-docmost-redis}
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./volumes/redis:/data
+    networks:
+      - shared
+
+networks:
+  # 共享网络：多个应用/nginx 容器加入同名网络即可互访。
+  # name 固定为变量值，不加项目前缀；首个启动的 compose 会创建它，其余复用。
+  shared:
+    name: ${DOCMOST_NETWORK_NAME:-devbox-shared-net}
+    driver: bridge
