@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
 #
-# uninstall.sh — 卸载 Docker Engine 28.4.0（含 compose 插件,对应 install.sh）
+# uninstall.sh — 卸载 Docker Engine（含 compose 插件,对应 install.sh）
 #
 # 支持系统：Ubuntu / Debian / Rocky Linux / CentOS / macOS
 #           （Windows：请从「应用和功能」卸载 Docker Desktop）
 #
-# 严格对应安装脚本：先校验在装引擎确为 28.4.0（不符时默认中止,避免误删他版）,
-# 再停止服务 → 移除 docker-ce/-cli/containerd.io/buildx/compose 插件 → 清理本
-# 脚本添加的官方仓库配置与 keyring。镜像/容器/卷等数据默认保留；PURGE=1 才连同
-# /var/lib/docker、/var/lib/containerd 一起清理。
+# 对应安装脚本(不锁版本):停止服务 → 移除 docker-ce/-cli/containerd.io/buildx/
+# compose 插件 → 清理本脚本添加的官方仓库配置与 keyring。镜像/容器/卷等数据默认
+# 保留；PURGE=1 才连同 /var/lib/docker、/var/lib/containerd 一起清理。
 #
 # 用法：
-#   ./uninstall.sh            # 停服务并卸载 Docker 28.4.0（保留镜像/容器/卷）
-#   FORCE=1 ./uninstall.sh    # 在装引擎版本非 28.4.0 时也强制卸载
+#   ./uninstall.sh            # 停服务并卸载 Docker（保留镜像/容器/卷）
 #   PURGE=1 ./uninstall.sh    # 连同镜像/容器/卷等数据一起清理（危险,不可恢复）
 #
 set -euo pipefail
-
-DOCKER_VERSION="28.4.0"                   # 精确版本,与所在目录名一致
 
 log()  { printf '\033[0;32m[uninstall]\033[0m %s\n' "$*"; }
 warn() { printf '\033[0;33m[uninstall]\033[0m %s\n' "$*" >&2; }
@@ -139,11 +135,7 @@ before="$(installed_version)"
 if [ -z "$before" ]; then
   warn "系统中未检测到 Docker,仅执行仓库/数据清理（若有）"
 else
-  log "当前在装：Docker Engine ${before}（经由 ${PM}）"
-  if [ "$before" != "$DOCKER_VERSION" ] && [ -z "${FORCE:-}" ]; then
-    die "在装引擎版本 ${before} 与本目录目标 ${DOCKER_VERSION} 不一致,已中止。
-如确认要卸载它,请用 FORCE=1 ./uninstall.sh 重跑,或改用对应版本目录下的脚本。"
-  fi
+  log "当前在装：Docker Engine ${before}（经由 ${PM}）,准备卸载"
 fi
 
 stop_service
@@ -160,7 +152,7 @@ purge_data
 # ---- 结果 ------------------------------------------------------------------
 after="$(installed_version)"
 if [ -z "$after" ] || [ "$PM" = "brew" ]; then
-  log "Docker ${DOCKER_VERSION} 卸载完成"
+  log "Docker 卸载完成${before:+（原 ${before}）}"
   [ -z "${PURGE:-}" ] && [ "$PM" != "brew" ] && \
     log "镜像/容器/卷数据已保留（/var/lib/docker）；如需彻底清理请用 PURGE=1 重跑。"
 else

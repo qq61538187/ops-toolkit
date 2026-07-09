@@ -1,0 +1,21 @@
+services:
+  excalidraw:
+    image: excalidraw/excalidraw:latest
+    # 容器名可通过 .env 覆盖，未设置时回退默认，便于多实例部署
+    container_name: ${EXCALIDRAW_CONTAINER_NAME:-mac-devbox-excalidraw}
+    # .env 与本文件同目录，Compose 会自动加载；显式声明便于阅读
+    env_file:
+      - .env
+    ports:
+      # 端口未设置时回退到默认 13004
+      - "${EXCALIDRAW_PORT:-13004}:80"
+    restart: unless-stopped
+    networks:
+      - shared
+
+networks:
+  # 共享网络：多个应用/nginx 容器加入同名网络即可互访。
+  # name 固定为变量值，不加项目前缀；首个启动的 compose 会创建它，其余复用。
+  shared:
+    name: ${EXCALIDRAW_NETWORK_NAME:-devbox-shared-net}
+    driver: bridge
