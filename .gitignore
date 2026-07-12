@@ -18,8 +18,6 @@ Desktop.ini
 .vscode/
 !.vscode/extensions.json
 
-# 本地工具配置
-.claude/settings.local.json
 
 # 临时文件与日志
 *.log
@@ -30,3 +28,8 @@ tmp/
 # dockerFiles 组件的备份产物（backup.sh/restore.sh 运行时生成，不入库）
 dockerFiles/*/backups/
 dockerFiles/*/*/backups/
+
+# AI 本地约定（不入库）
+.cursor/
+CLAUDE.md
+.claude/
